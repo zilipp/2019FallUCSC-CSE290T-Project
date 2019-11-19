@@ -105,12 +105,15 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-#data
+# data
 data/
 embeddings/
 checkpoints/
 logs/
 *.h5
 
-#macOS
+# output
+/out
+
+# macOS
 .DS_Store
