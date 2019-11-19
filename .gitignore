@@ -106,7 +106,6 @@ venv.bak/
 .mypy_cache/
 
 # data
-data/
 embeddings/
 checkpoints/
 logs/
