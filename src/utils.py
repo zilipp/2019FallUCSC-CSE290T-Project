@@ -32,10 +32,12 @@ def split_csv(file, data_dir, k, method='KFold'):
     # Drop N/A for text column
     train_df = train_df.dropna()
     length = []
-    [length.append(len(str(text))) for text in train_df['text']]
+    [length.append(len(str(text))) for text in train_df['title']]
     train_df['length'] = length
     # dropping the outliers
-    train_df = train_df.drop(train_df['text'][train_df['length'] < _min_seq_len].index, axis=0)
+    train_df = train_df.drop(train_df['title'][train_df['length'] < _min_seq_len].index, axis=0)
+
+    logging.debug(train_df.groupby('length').size())
 
     logging.info("Splitting data")
     if method == 'KFold':
