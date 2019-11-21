@@ -186,6 +186,7 @@ def eval(val_x, val_y):
 
 def main():
     init_logger(_user_logs_file)
+    logging.info('======================start==========================')
     train_x, train_y, val_x, val_y, test_x, test_id = load_data()
     train_x, val_x, test_x = preprocess(train_x, val_x, test_x)
     train(train_x, train_y, val_x, val_y)
