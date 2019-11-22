@@ -11,7 +11,8 @@ from sys import platform
 
 
 # self defined module
-from src.utils import init_logger, split_csv
+from utils import init_logger, split_csv
+from cnn import CNN
 
 
 # some config values
@@ -66,7 +67,8 @@ def load_data():
     val_df = kfold_df[_eval_file]
     del kfold_df[_eval_file]
     train_df = pd.concat(kfold_df)
-    logging.info('Train shape : {0} Eval shape : {1}'.format(train_df.shape, val_df.shape))
+    logging.info('Train shape : {0} Eval shape : {1}'.format(
+        train_df.shape, val_df.shape))
 
     # Assign values
     logging.info('Assigning values')
@@ -99,9 +101,12 @@ def preprocess(train_x, val_x, test_x):
 
     # Pad the sentences
     logging.info('Padding sentences')
-    train_x = keras.preprocessing.sequence.pad_sequences(train_x, maxlen=_seq_length)
-    val_x = keras.preprocessing.sequence.pad_sequences(val_x, maxlen=_seq_length)
-    test_x = keras.preprocessing.sequence.pad_sequences(test_x, maxlen=_seq_length)
+    train_x = keras.preprocessing.sequence.pad_sequences(
+        train_x, maxlen=_seq_length)
+    val_x = keras.preprocessing.sequence.pad_sequences(
+        val_x, maxlen=_seq_length)
+    test_x = keras.preprocessing.sequence.pad_sequences(
+        test_x, maxlen=_seq_length)
 
     return train_x, val_x, test_x
 
@@ -117,13 +122,15 @@ def create_model():
     elif _model_type == 'rnn':
         inp = keras.layers.Input(shape=(_seq_length,))
         x = keras.layers.Embedding(_vocab_size, _emb_size)(inp)
-        x = keras.layers.Bidirectional(tf.compat.v1.keras.layers.CuDNNGRU(64, return_sequences=True))(x)
+        x = keras.layers.Bidirectional(
+            tf.compat.v1.keras.layers.CuDNNGRU(64, return_sequences=True))(x)
         x = keras.layers.GlobalMaxPool1D()(x)
         x = keras.layers.Dense(16, activation='relu')(x)
         x = keras.layers.Dropout(0.1)(x)
         x = keras.layers.Dense(1, activation='sigmoid')(x)
         model = keras.models.Model(inputs=inp, outputs=x)
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy',
+                      optimizer='adam', metrics=['accuracy'])
         return model
     else:
         assert False
@@ -153,8 +160,10 @@ def train(train_x, train_y, val_x, val_y):
     # cross_device_ops = tf.distribute.ReductionToOneDevice(reduce_to_device='/device:CPU:0')
     # https://www.tensorflow.org/api_docs/python/tf/distribute/HierarchicalCopyAllReduce
     cross_device_ops = tf.distribute.HierarchicalCopyAllReduce(num_packs=2)
-    mirrored_strategy = tf.distribute.MirroredStrategy(cross_device_ops=cross_device_ops)
-    logging.info('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
+    mirrored_strategy = tf.distribute.MirroredStrategy(
+        cross_device_ops=cross_device_ops)
+    logging.info('Number of devices: {}'.format(
+        mirrored_strategy.num_replicas_in_sync))
     with mirrored_strategy.scope():
         logging.info('Setup model')
         model = create_model()
@@ -185,7 +194,8 @@ def eval(val_x, val_y):
     loss, acc = model.evaluate(val_x, val_y, verbose=1)
     logging.info('Restored model, accuracy: {:5.2f}%'.format(100 * acc))
 
-    pred_noemb_val_y = model.predict([val_x], batch_size=_batch_size, verbose=1)
+    pred_noemb_val_y = model.predict(
+        [val_x], batch_size=_batch_size, verbose=1)
     for thresh in np.arange(0.1, 0.9, 0.01):
         thresh = np.round(thresh, 2)
         logging.info('F1 score at threshold {0} is {1}'.format(
@@ -195,10 +205,15 @@ def eval(val_x, val_y):
 def main():
     init_logger(_user_logs_file)
     logging.info('======================start==========================')
+
     train_x, train_y, val_x, val_y, test_x, test_id = load_data()
     train_x, val_x, test_x = preprocess(train_x, val_x, test_x)
-    train(train_x, train_y, val_x, val_y)
-    eval(val_x, val_y)
+    # train(train_x, train_y, val_x, val_y)
+    # eval(val_x, val_y)
+
+    cnn = CNN(feature_size=train_x.shape[1])
+    cnn.fit(train_x, train_y, val_x, val_y)
+    logging.info(cnn.predict(test_x[:4, :]))
 
     logging.info('Done!')
 
