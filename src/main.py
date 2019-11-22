@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import logging
 import pandas as pd
 import tensorflow as tf
@@ -6,18 +7,25 @@ from tensorflow import keras
 from sklearn import metrics
 import numpy as np
 import shutil
+from sys import platform
+
 
 # self defined module
 from src.utils import init_logger, split_csv
 
 
 # some config values
-_user_logs_file = '..\\out\\logs\\user_logs\\logs.txt'  # User logging directory.
-_tf_logs_dir = '..\\out\\logs\\tf'  # TensorFlow logging directory.
+
+# get the root directory relative to current file instead of cwd
+_root_dir = Path(os.path.dirname(os.path.abspath(__file__))) / '..'
+
+_user_logs_file = _root_dir / Path('out/logs/user_logs/logs.txt') # User logging directory.
+_tf_logs_dir = _root_dir / Path('out/logs/tf')  # TensorFlow logging directory.
 
 _model_name = 'model.h5'  # Saved model name.
-_model_dir = '..\\checkpoints'  # Saved model directory
-_data_dir = '..\\data'  # Data directory.
+_model_dir = _root_dir / Path('checkpoints')  # Saved model directory
+_data_dir = _root_dir / Path('data')  # Data directory.
+
 _num_folds = 10  # Number of folds(k) used in cross validation.'
 _eval_file = 5  # evaluation file in k-fold.
 _num_gpus = 2  # Number of GPUs used.
@@ -41,16 +49,16 @@ else:
 def load_data():
     # Check k-fold directory
     logging.info('Checking k-fold files')
-    kfold_dir = os.path.join(_data_dir, 'kfold')
-    # if not os.path.exists(kfold_dir):
-    #     os.mkdir(kfold_dir)
+    kfold_dir = _data_dir / 'kfold'
+    if not os.path.exists(kfold_dir):
+        os.mkdir(kfold_dir)
     # if not os.listdir(kfold_dir):
-    split_csv(os.path.join(_data_dir, 'train.csv'), kfold_dir, _num_folds, 'StratifiedShuffleSplit')
+    split_csv(Path(_data_dir / 'train.csv'), kfold_dir, _num_folds, 'StratifiedShuffleSplit')
 
     # Load dataset
     logging.info('Loading train/test dataset')
-    kfold_df = [pd.read_csv(os.path.join(kfold_dir, '{}.csv'.format(i))) for i in range(_num_folds)]
-    test_df = pd.read_csv(os.path.join(_data_dir, 'test.csv'))
+    kfold_df = [pd.read_csv(kfold_dir / (str(i) + 'csv')) for i in range(_num_folds)]
+    test_df = pd.read_csv(_data_dir / 'test.csv')
     logging.info('K-fold shape : {0} Test shape : {1}'.format(kfold_df[0].shape, test_df.shape))
 
     # Split to train and val
@@ -128,7 +136,7 @@ def train(train_x, train_y, val_x, val_y):
     os.mkdir(_tf_logs_dir)
     tensorboard = tf.keras.callbacks.TensorBoard(log_dir=_tf_logs_dir)
 
-    checkpoint_path = os.path.join(_model_dir, 'cp-{epoch:04d}.ckpt')
+    checkpoint_path = _model_dir / 'cp-{epoch:04d}.ckpt'
     if os.path.exists(_model_dir):
         shutil.rmtree(_model_dir)
     os.mkdir(_model_dir)
@@ -158,7 +166,7 @@ def train(train_x, train_y, val_x, val_y):
     history = model.fit(train_x, train_y, batch_size=_batch_size, epochs=_num_epochs,
                         callbacks=[tensorboard, cp_callback], validation_data=(val_x, val_y))
     logging.info('Saving the model')
-    model.save(os.path.join(_model_dir, _model_name))
+    model.save(_model_dir / _model_name)
 
 
 def eval(val_x, val_y):

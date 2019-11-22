@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import sys
 import logging
 from logging import handlers
@@ -7,6 +8,7 @@ from sklearn.model_selection import KFold
 from sklearn.model_selection import StratifiedShuffleSplit
 
 _min_seq_len = 50  # Minimum length of sequence
+
 
 def init_logger(log_file):
     if not os.path.exists(log_file):
@@ -53,5 +55,5 @@ def split_csv(file, data_dir, k, method='KFold'):
     for train_index, test_index in kf.split(train_df,
                                             y=train_df['label'] if method == 'StratifiedShuffleSplit' else None):
         test_df = train_df.iloc[test_index]
-        test_df.to_csv(os.path.join(data_dir, "{}.csv".format(i)), encoding='utf-8', index=False)
+        test_df.to_csv((data_dir / (str(i) + 'csv')), encoding='utf-8', index=False)
         i += 1
