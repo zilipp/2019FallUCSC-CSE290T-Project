@@ -110,6 +110,7 @@ embeddings/
 checkpoints/
 logs/
 *.h5
+data/kfold
 
 # output
 /out
