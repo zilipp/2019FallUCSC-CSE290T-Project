@@ -15,12 +15,16 @@ from src.utils import init_logger, split_csv
 
 
 # some config values
-_user_logs_file = Path('../out//logs//user_logs//logs.txt') # User logging directory.
-_tf_logs_dir = Path('../out/logs/tf')  # TensorFlow logging directory.
+
+# get the root directory relative to current file instead of cwd
+_root_dir = Path(os.path.dirname(os.path.abspath(__file__))) / '..'
+
+_user_logs_file = _root_dir / Path('out/logs/user_logs/logs.txt') # User logging directory.
+_tf_logs_dir = _root_dir / Path('out/logs/tf')  # TensorFlow logging directory.
 
 _model_name = 'model.h5'  # Saved model name.
-_model_dir = Path('../checkpoints')  # Saved model directory
-_data_dir = Path('../data')  # Data directory.
+_model_dir = _root_dir / Path('checkpoints')  # Saved model directory
+_data_dir = _root_dir / Path('data')  # Data directory.
 
 _num_folds = 10  # Number of folds(k) used in cross validation.'
 _eval_file = 5  # evaluation file in k-fold.
