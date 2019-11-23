@@ -1,5 +1,5 @@
-numpy
 tensorflow>=2.0.0
 tensorflow-gpu>=2.0.0
+Keras>=2.3.1
 scikit-learn>=0.20
 pandas>=0.25.1

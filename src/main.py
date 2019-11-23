@@ -21,13 +21,13 @@ _data_dir = '..\\data'  # Data directory.
 _num_folds = 10  # Number of folds(k) used in cross validation.'
 _eval_file = 5  # evaluation file in k-fold.
 _num_gpus = 2  # Number of GPUs used.
-_num_epochs = 25  # Number of epochs.
-_batch_size = 2048
+_num_epochs = 7  # Number of epochs.
+_batch_size = 1
 _eval_period = 1  # Number of epochs per evaluation.
 
-_emb_size = 300  # Size of embedding vector
+_emb_size = 128  # Size of embedding vector
 _vocab_size = 10000  # Number of unique words
-_seq_length = 150  # Max length of sequence
+_seq_length = 4500  # Max length of sequence
 
 _model_type = 'rnn'
 
@@ -62,9 +62,9 @@ def load_data():
 
     # Assign values
     logging.info('Assigning values')
-    train_x = train_df['title'].fillna('_na_').values
-    val_x = val_df['title'].fillna('_na_').values
-    test_x = test_df['title'].fillna('_na_').values
+    train_x = train_df['text'].fillna('_na_').values
+    val_x = val_df['text'].fillna('_na_').values
+    test_x = test_df['text'].fillna('_na_').values
     test_id = test_df['id']
 
     # Get the target values
@@ -108,10 +108,20 @@ def create_model():
         return
     elif _model_type == 'rnn':
         inp = keras.layers.Input(shape=(_seq_length,))
-        x = keras.layers.Embedding(_vocab_size, _emb_size)(inp)
-        x = keras.layers.Bidirectional(tf.compat.v1.keras.layers.CuDNNGRU(64, return_sequences=True))(x)
+        embedded_seq = keras.layers.Embedding(_vocab_size, _emb_size)(inp)
+        activations = keras.layers.Bidirectional(tf.compat.v1.keras.layers.CuDNNGRU(128, return_sequences=True))(
+            embedded_seq)
+        # compute importance for each step
+        attention = keras.layers.Dense(1, activation='tanh')(activations)
+        attention = keras.layers.Flatten()(attention)
+        attention = keras.layers.Activation('softmax')(attention)
+        attention = keras.layers.RepeatVector(256)(attention)
+        attention = keras.layers.Permute([2, 1])(attention)
+        multiply_layer = keras.layers.Multiply()
+        x = multiply_layer([activations, attention])
+        # sent_representation = keras.layers.Lambda(lambda xin: keras.backend.sum(xin, axis=-2), output_shape=(256,))(sent_representation)
         x = keras.layers.GlobalMaxPool1D()(x)
-        x = keras.layers.Dense(16, activation='relu')(x)
+        x = keras.layers.Dense(16, activation='softmax')(x)
         x = keras.layers.Dropout(0.1)(x)
         x = keras.layers.Dense(1, activation='sigmoid')(x)
         model = keras.models.Model(inputs=inp, outputs=x)
