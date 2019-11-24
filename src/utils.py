@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.model_selection import KFold
 from sklearn.model_selection import StratifiedShuffleSplit
 
-_min_seq_len = 50  # Minimum length of sequence
+_min_seq_len = 3  # Minimum length of sequence
 
 
 def init_logger(log_file):
