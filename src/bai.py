@@ -10,41 +10,52 @@ Original file is located at
 import re
 import nltk
 import pandas as pd
+import numpy as np
 from sklearn import preprocessing
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer, TfidfTransformer
 
 class Processor:
   def __init__(self):
     self._df = pd.DataFrame()
   
-  def _load_data(self, file_name):
+  def load_data(self, file_name):
     try:
-      self._df = pd.read_csv(file_name)
+      self._df = pd.read_csv(file_name, encoding = 'unicode_escape')
     except OSError:
       print("The file '{}' is not found!".format(file_name))
 
-  def _manage_noisy_data(self):
+  def manage_noisy_data(self):
     self._df = self._df.dropna()
+    self._df = self._df[pd.to_numeric(self._df['id'], errors='coerce').notnull()]
 
-  def _extract_features(self): 
-    def _get_documents(column_name):
-      self._df[column_name] = self._df['title'] + self._df['text']                       
-      self._df[column_name] = self._df[column_name].fillna('')
-      self._df[column_name] = self._df[column_name].apply(lambda x : _tokenize(x))
-      return self._df[column_name].tolist() # get the text column 
+  def encode(self):
+    le = preprocessing.LabelEncoder()
+    enc = preprocessing.OneHotEncoder(categories='auto')
+    X = self._df.select_dtypes(include=[object])
+    X_2 = X.apply(le.fit_transform)
+    enc.fit(X_2)
+    onehotlabels = enc.transform(X_2).toarray()
+    return onehotlabels
+
+  def get_documents(self, target_column):
     def _tokenize(text):
       text = text.lower() # lowercase
-      text = re.sub("<!--?.*?-->","",text) #remove tags
-      text = re.sub("(\\d|\\W)+"," ",text) # remove special characters and digits
+      text = re.sub("<!--?.*?-->", "", text) #remove tags
+      text = re.sub("(\\d|\\W)+"," ", text) # remove special characters and digits
+      test = re.sub('[^A-Za-z0-9]+', '', text)
       return text
-    def _get_tfidf_models(documents):
-      cv = CountVectorizer(max_df = 0.85, stop_words = _get_stop_words("stop_words.txt"), max_features = 10000)
-      tfidf_transformer = TfidfTransformer(smooth_idf = True, use_idf = True)
-      word_count_vector = cv.fit_transform(documents)
-      tfidf_transformer.fit(word_count_vector) 
-      #print(cv.get_feature_names())
-      #print(word_count_vector.toarray())
-      return cv, tfidf_transformer
+    self._df[target_column] = self._df['title'] + self._df['text']                       
+    self._df[target_column] = self._df[target_column].fillna('')
+    self._df[target_column] = self._df[target_column].apply(lambda x : _tokenize(x))
+    return self._df[target_column].tolist() # get the text column 
+  
+  def nlp(self, documents, stop_words_file = None, customize_max_df = None, customize_max_features = None):
     def _get_stop_words(file_name): # load stop words
       try: 
         with open(file_name, 'r', encoding="utf-8") as f:
@@ -53,73 +64,92 @@ class Processor:
           return frozenset(stop_set)
       except OSError:
         print("The file '{}' is not found!".format(file_name))
-    def _show_features(cv, tiidf_transformer, curr_doc):
-      feature_names = cv.get_feature_names() # you only needs to do this once, this is a mapping of index to 
-      tfidf_vector = tfidf_transformer.transform(cv.transform([curr_doc])) #generate tf-idf for the given document
-      sorted_items = _sort_coo(tfidf_vector.tocoo()) #sort the tf-idf vectors by descending order of scores
-      keywords = _extract_top_n_from_vector(feature_names, sorted_items, 10) #extract only the top n; n here is 10
-      print("\n=====Doc=====") # now print the results
-      print(curr_doc)
-      print("\n===Keywords===")
-      for k in keywords:
-          print(k, keywords[k])
-    def _sort_coo(coo_matrix):
-      tuples = zip(coo_matrix.col, coo_matrix.data)
-      return sorted(tuples, key=lambda x: (x[1], x[0]), reverse = True)
-    def _extract_top_n_from_vector(feature_names, sorted_items, topn = 10):
-      """get the feature names and tf-idf score of top n items"""
-      sorted_items = sorted_items[: topn] #use only topn items from vector
-      score_vals = []
-      feature_vals = []
-      for idx, score in sorted_items: # word index and corresponding tf-idf score
-        score_vals.append(round(score, 3))
-        feature_vals.append(feature_names[idx])  #keep track of feature name and its corresponding score
-      results= {} #create a tuples of feature,score
-      for idx in range(len(feature_vals)): #results = zip(feature_vals,score_vals)
-        results[feature_vals[idx]] = score_vals[idx]
-      return results
-    documents = _get_documents('document')
-    cv, tfidf_transformer = _get_tfidf_models(documents)
-    for i in range(10):
-      _show_features(cv, tfidf_transformer, documents[i*100])
+    tf = TfidfVectorizer(max_df = customize_max_df, 
+                         stop_words = _get_stop_words(stop_words_file), 
+                         max_features = customize_max_features)
+    tfidf_vectors = tf.fit_transform(documents).toarray()
+    feature_names = tf.get_feature_names()
+    self._df = pd.DataFrame(tfidf_vectors, columns=feature_names)
+    self._df.to_csv('features.csv')
 
   def get_df(self):
     return self._df
 
-  def summary(self, instruction = None):
-    def overview():
-      print(self._df.info())
-    def null_sum():
-      print(self._df.isnull().sum())
-    def null_rows():
-      print(self._df[self._df.isna().any(axis=1)])
-    def null_rows_indices():
-      for col in self._df.columns:
-        print(col)
-        print(self._df[self._df[col].isnull()].index.tolist())
-    if (instruction == "overview"):
-      overview()
-    elif (instruction == "null_sum"):
-      null_sum()
-    elif (instruction == "null_rows"):
-      null_rows()
-    elif (instruction == "null_rows_indices"):
-      null_rows_indices()
-
-  def process(self, file_name):
-    self._load_data(file_name)
-    #self._manage_noisy_data()
-    self._extract_features()
+  def update_df(self, df):
+    self._df = df
 
 class Learner:
-  def __init__(self):
-    pass
-  
+  def __init__(self, X, y):
+    self._X = X
+    self._y = y
+    self._X_train = None
+    self._X_test = None
+    self._y_train = None
+    self._y_test = None
+
+  def partition(self, customize_test_size):
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=customize_test_size, shuffle=True)
+    self._X_train = X_train
+    self._X_test = X_test
+    self._y_train = y_train
+    self._y_test = y_test
+
+  def evaluate(self, model):
+    if (model == 'LogisticRegression'):
+      clf = LogisticRegression()
+    elif (model == 'RandomForest'):
+      clf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=0)
+    elif (model == 'NaiveBayes'):
+      clf = GaussianNB()
+    elif (model == 'KNeareastNeighbors'):
+      clf = KNeighborsClassifier(n_neighbors=3)
+    elif (model == 'SupportVectorMachine'):
+      clf = SVC()
+    clf.fit(self._X_train, self._y_train)
+    score = clf.score(self._X_test, self._y_test)
+    print('========== {} =========='.format(model))
+    print(score)
+
 class Developer:
   def __init__(self):
     pass
 
 if __name__ == "__main__":
-  processor = Processor()
-  processor.process("fake.csv")
+  ''' ========== Initialization =========== '''
+  MAX_FEATURE = 1000
+  MAX_DF = 0.85
 
+  ''' ========== Mange Noisy Data ========== '''
+  #processor = Processor()
+  #processor.load_data('train.csv')
+  #processor.manage_noisy_data()
+
+  ''' ========== NLP =========== '''
+  #documents = processor.get_documents('documents')
+  #processor.nlp(documents, 'stop_words.txt', MAX_DF, MAX_FEATURE)
+
+  ''' ========== Nomalization ========== '''
+  processor = Processor()
+  processor.load_data('train.csv')
+  processor.manage_noisy_data()
+  train = processor.get_df()
+  X_string = train.drop(columns=['title', 'text'])
+  processor.update_df(X_string)
+  X_string = processor.encode()
+
+  processor.load_data('features.csv')
+  features = processor.get_df()
+  features = features.drop(columns=['id'])
+  X_features = features.values
+  X = np.concatenate((X_string,X_features),axis = 1)
+  y = train['label'].values
+  
+  ''' ========== Classification ========== '''
+  learner = Learner(X, y)
+  learner.partition(0.33)
+  #learner.evaluate('LogisticRegression')
+  learner.evaluate('RandomForest')
+  #learner.evaluate('NaiveBayes')
+  #learner.evaluate('KNeareastNeighbors')
+  #learner.evaluate('SupportVectorMachine')
