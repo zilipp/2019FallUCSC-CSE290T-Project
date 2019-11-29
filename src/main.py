@@ -197,13 +197,8 @@ def main():
     logging.info('======================start==========================')
     train_x, train_y, val_x, val_y, test_x, test_id = load_data()
     train_x, val_x, test_x = preprocess(train_x, val_x, test_x)
-    # train(train_x, train_y, val_x, val_y)
-    # eval(val_x, val_y)
-
-    cnn = CNN(feature_size=train_x.shape[1])
-    cnn.fit(train_x, train_y, val_x, val_y)
-    logging.info(cnn.predict(test_x[:4, :]))
-
+    train(train_x, train_y, val_x, val_y)
+    eval(val_x, val_y)
     logging.info('Done!')
 
 
