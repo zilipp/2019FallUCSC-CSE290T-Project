@@ -21,15 +21,11 @@ class Preprocessor:
 
 
 def preprocess(data_train, data_test):
-    proc_title = Preprocessor()
-    proc_title.fit(data_train['title'])
-    proc_title.fit(data_test['title'])
+    def transform_col(col: str):
+        preprocessor = Preprocessor()
+        preprocessor.fit(data_train[col])
+        preprocessor.fit(data_test[col])
 
-    proc_text = Preprocessor()
-    proc_text.fit(data_train['text'])
-    proc_text.fit(data_test['text'])
-
-    def transform_col(preprocessor: Preprocessor, col: str):
         col_train = preprocessor.transform(data_train[col])
         col_test = preprocessor.transform(data_test[col])
 
@@ -43,7 +39,7 @@ def preprocess(data_train, data_test):
         data_test[col] = pd.Series(pad_sequences(
             col_test, padding='post', maxlen=median).tolist())
 
-    transform_col(proc_title, 'title')
-    transform_col(proc_text, 'text')
+    transform_col('title')
+    transform_col('text')
 
     return data_train, data_test
