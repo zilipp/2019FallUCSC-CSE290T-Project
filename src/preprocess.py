@@ -20,9 +20,9 @@ class Preprocessor:
         return self._tk.texts_to_sequences(data)
 
 
-def preprocess(data_train, data_test):
+def preprocess(data_train, data_test, vocab_size):
     def transform_col(col: str):
-        preprocessor = Preprocessor()
+        preprocessor = Preprocessor(num_words=vocab_size)
         preprocessor.fit(data_train[col])
         preprocessor.fit(data_test[col])
 
