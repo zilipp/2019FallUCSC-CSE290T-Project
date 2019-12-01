@@ -5,11 +5,12 @@ import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras import layers
-from preprocess import preprocess
+from preprocess import Preprocessor
 from sklearn.model_selection import train_test_split
 import logging
 from tabulate import tabulate
 from utils import data_dir, init_logger
+from typing import List
 
 _vocab_size = 10000
 
@@ -21,10 +22,10 @@ class CNN:
     def __init__(self, feature_size):
         self._feature_size = feature_size
 
-        logging.info(tf.config.experimental.list_physical_devices('GPU'))
-
         inputs = keras.Input(shape=(feature_size, ))
-        x = layers.Embedding(_vocab_size, 10)(inputs)
+        # The embedding layer is to use higher dimension real vectors to represent
+        # words.
+        x = layers.Embedding(_vocab_size, 5)(inputs)
         x = layers.Conv1D(50, kernel_size=10, activation='relu')(x)
         x = layers.MaxPool1D(5)(x)
         x = layers.GlobalAveragePooling1D()(x)
@@ -56,42 +57,48 @@ class CNN:
                                      headers=self._model.metrics_names))
 
 
-def loadData():
-    logging.info('loading data')
+def loadData(filename, cols=List[str], tokenizer_name=None):
+    """Load file into vector data with vocabulary file name"""
+    [filename, ext] = os.path.splitext(filename)
+    if ext != '.csv':
+        raise Exception('Only support .csv files')
+
+    logging.info(f'loading data from {filename}')
 
     cache_dir = data_dir / 'cache'
-    cached_train = cache_dir / 'train.pkl'
-    cached_test = cache_dir / 'test.pkl'
+    tokenizer_name = tokenizer_name if tokenizer_name else filename
+    cached_filename = cache_dir / f'{filename}.pkl'
 
     # read from the cache if data exists
-    if os.path.exists(cached_test) and os.path.exists(cached_train):
+    if os.path.exists(cached_filename):
         logging.info('Read data from cache')
-        data_train, data_test = pd.read_pickle(
-            cached_train), pd.read_pickle(cached_test)
-        return data_train, data_test
+        return pd.read_pickle(cached_filename)
 
-    data_train = pd.read_csv(data_dir / 'train.csv', keep_default_na=False)
-    data_test = pd.read_csv(data_dir / 'test.csv', keep_default_na=False)
+    data = pd.read_csv(data_dir / f'{filename}.csv', keep_default_na=False)
 
-    logging.info('Preprocessing data')
-
-    data_train, data_test = preprocess(data_train, data_test, _vocab_size)
-
-    logging.info('Writting data to cache')
     # write to cache
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
 
-    data_train.to_pickle(cached_train)
-    data_test.to_pickle(cached_test)
+    logging.info('Preprocessing data')
+    for col in cols:
+        preproc = Preprocessor(cache_path=cache_dir /
+                               f'{tokenizer_name}_{col}.json', num_words=_vocab_size)
+        preproc.fit(data[col])
+        data[col] = preproc.transform(data[col])
+        preproc.save()
 
-    return data_train, data_test
+    logging.info('Writting data to cache')
+
+    data.to_pickle(cached_filename)
+
+    return data
 
 
 if __name__ == "__main__":
     init_logger()
 
-    data_train, data_unknown = loadData()
+    data_train = loadData('train.csv', ('title', 'text'))
 
     data_train, data_test = train_test_split(data_train, test_size=0.2)
 
