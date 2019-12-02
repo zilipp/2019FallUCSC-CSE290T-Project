@@ -18,7 +18,7 @@ print(train_df.isnull().sum())
 # author    1957
 # text        39
 # label        0
-train_df[['title', 'author']] = train_df[['title', 'author']].fillna(value = 'Missing')
+train_df[['title', 'author']] = train_df[['title', 'author']].fillna(value='Missing')
 train_df = train_df.dropna()
 print(train_df.isnull().sum())
 # title     0
@@ -30,8 +30,8 @@ print(train_df.isnull().sum())
 train_df = train_df.drop(train_df['text'][train_df['length'] < 10].index, axis = 0)
 
 # common parameters
-max_len = 300  # max_len of a sentence
-embed_size = 300  # each word embedded to 300 dimension
+max_len = 510  # max_len of a sentence(median length of all text)
+embed_size = 100  # each word embedded to 300 dimension
 max_features = 50000  # count of vocabulary words
 
 
@@ -39,7 +39,7 @@ max_features = 50000  # count of vocabulary words
 tokenizer = Tokenizer(num_words=max_len, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower = True, split = ' ')
 tokenizer.fit_on_texts(texts=train_df['text'])
 X = tokenizer.texts_to_sequences(texts=train_df['text'])
-X = pad_sequences(sequences = X, maxlen=max_len, padding='pre')
+X = pad_sequences(sequences=X, maxlen=max_len, padding='pre')
 y = train_df['label'].values
 
 # 5. split to train and validation
