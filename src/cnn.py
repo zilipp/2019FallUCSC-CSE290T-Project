@@ -8,6 +8,7 @@ from tensorflow.keras import layers
 from preprocess import Preprocessor
 from sklearn.model_selection import train_test_split
 import logging
+import matplotlib.pyplot as plt
 from tabulate import tabulate
 from utils import data_dir, init_logger
 from typing import List
@@ -19,14 +20,14 @@ class CNN:
     _model = None
     _feature_size = 0
 
-    def __init__(self, feature_size):
+    def __init__(self, feature_size, vocab_size):
         self._feature_size = feature_size
 
         inputs = keras.Input(shape=(feature_size, ))
         # The embedding layer is to use higher dimension real vectors to represent
         # words.
-        x = layers.Embedding(_vocab_size, 5)(inputs)
-        x = layers.Conv1D(50, kernel_size=10, activation='relu')(x)
+        x = layers.Embedding(vocab_size, 1)(inputs)
+        x = layers.Conv1D(50, kernel_size=5, activation='relu')(x)
         x = layers.MaxPool1D(5)(x)
         x = layers.GlobalAveragePooling1D()(x)
         x = layers.Dense(10, activation='relu')(x)
@@ -45,8 +46,8 @@ class CNN:
                             # List of metrics to monitor
                             metrics=[keras.metrics.BinaryAccuracy()])
 
-    def fit(self, X, T):
-        self._model.fit(X, T, epochs=5)
+    def fit(self, X, T, epochs=5):
+        self._model.fit(X, T, epochs=epochs)
 
     def predict(self, X):
         return self._model.predict(X)
@@ -100,7 +101,8 @@ if __name__ == "__main__":
 
     data_train = loadData('train.csv', ('title', 'text'))
 
-    data_train, data_test = train_test_split(data_train, test_size=0.2)
+    data_train, data_test = train_test_split(
+        data_train, test_size=0.2, stratify=data_train['label'])
 
     X_train = np.array(data_train['text'].to_list())
     T_train = np.array(data_train['label'])
@@ -113,6 +115,6 @@ if __name__ == "__main__":
     # check from the cache
 
     # test with title first
-    cnn = CNN(X_train.shape[1])
+    cnn = CNN(X_train.shape[1], vocab_size=_vocab_size)
     cnn.fit(X_train, T_train)
     cnn.evaluate(X_test, T_test)
