@@ -24,7 +24,7 @@ class CNN:
         inputs = keras.Input(shape=(feature_size, ))
         # The embedding layer is to use higher dimension real vectors to represent
         # words.
-        x = layers.Embedding(vocab_size, 1)(inputs)
+        x = layers.Embedding(vocab_size, 10)(inputs)
         x = layers.Conv1D(50, kernel_size=5, activation='relu')(x)
         x = layers.MaxPool1D(5)(x)
         x = layers.GlobalAveragePooling1D()(x)
