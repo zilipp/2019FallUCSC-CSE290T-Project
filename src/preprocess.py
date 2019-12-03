@@ -102,7 +102,7 @@ def loadData(filename, cols: List[str], tokenizer_name=None, vocab_size=10000):
     return data
 
 
-def get_train_test_set(data: pd.DataFrame, col='text', test_size=0.2, min_seq=50):
+def get_train_test_set(data: pd.DataFrame, col='text', test_size=0.2, min_seq=10):
     """Turn the DataFrame into train and test sets
 
     Arguments:
@@ -118,8 +118,8 @@ def get_train_test_set(data: pd.DataFrame, col='text', test_size=0.2, min_seq=50
     """
 
     data = data[[col, 'label']]
-    data.drop(data[np.array(list(map(len, data[col])))
-                   < min_seq].index, axis=0)
+    data = data.drop(data[np.fromiter(map(lambda i: len(np.trim_zeros(i)), data[col]), int)
+                          < min_seq].index, axis=0)
 
     data_train, data_test = train_test_split(
         data, test_size=test_size, stratify=data['label'])
