@@ -5,13 +5,11 @@ import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras import layers
-from preprocess import Preprocessor
-from sklearn.model_selection import train_test_split
+from preprocess import loadData, get_train_test_set
 import logging
 import matplotlib.pyplot as plt
 from tabulate import tabulate
-from utils import data_dir, init_logger
-from typing import List
+from utils import init_logger
 
 _vocab_size = 10000
 
@@ -58,56 +56,12 @@ class CNN:
                                      headers=self._model.metrics_names))
 
 
-def loadData(filename, cols=List[str], tokenizer_name=None):
-    """Load file into vector data with vocabulary file name"""
-    [filename, ext] = os.path.splitext(filename)
-    if ext != '.csv':
-        raise Exception('Only support .csv files')
-
-    logging.info(f'loading data from {filename}')
-
-    cache_dir = data_dir / 'cache'
-    tokenizer_name = tokenizer_name if tokenizer_name else filename
-    cached_filename = cache_dir / f'{filename}.pkl'
-
-    # read from the cache if data exists
-    if os.path.exists(cached_filename):
-        logging.info('Read data from cache')
-        return pd.read_pickle(cached_filename)
-
-    data = pd.read_csv(data_dir / f'{filename}.csv', keep_default_na=False)
-
-    # write to cache
-    if not os.path.exists(cache_dir):
-        os.mkdir(cache_dir)
-
-    logging.info('Preprocessing data')
-    for col in cols:
-        preproc = Preprocessor(cache_path=cache_dir /
-                               f'{tokenizer_name}_{col}.json', num_words=_vocab_size)
-        preproc.fit(data[col])
-        data[col] = preproc.transform(data[col])
-        preproc.save()
-
-    logging.info('Writting data to cache')
-
-    data.to_pickle(cached_filename)
-
-    return data
-
-
 if __name__ == "__main__":
     init_logger()
 
-    data_train = loadData('train.csv', ('title', 'text'))
-
-    data_train, data_test = train_test_split(
-        data_train, test_size=0.2, stratify=data_train['label'])
-
-    X_train = np.array(data_train['text'].to_list())
-    T_train = np.array(data_train['label'])
-    X_test = np.array(data_test['text'].to_list())
-    T_test = np.array(data_test['label'])
+    data_train = loadData('train.csv', ('title', 'text'),
+                          vocab_size=_vocab_size)
+    X_train, T_train, X_test, T_test = get_train_test_set(data_train)
 
     logging.info(
         f'X_train {X_train.shape}, T_train {T_train.shape}, X_test {X_test.shape}, T_test {T_test.shape}')
