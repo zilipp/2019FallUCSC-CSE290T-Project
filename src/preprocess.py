@@ -7,7 +7,7 @@ from tensorflow.keras.preprocessing.text import Tokenizer, tokenizer_from_json
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
 from utils import data_dir, cache_dir
-from typing import List
+from typing import List, Union
 
 import logging
 
@@ -33,7 +33,7 @@ class Preprocessor:
         with open(filename, 'w') as f:
             f.write(self._tk.to_json())
 
-    def transform(self, data: pd.Series, truncate='median'):
+    def transform(self, data: pd.Series, truncate: Union[str, int] = 'median'):
         """Transform a list of Series of texts into a list of Series of vectors"""
         seq = self._tk.texts_to_sequences(data)
 
@@ -44,11 +44,20 @@ class Preprocessor:
         if truncate == 'median':
             text_len = int(np.median(lens))
         else:
-            text_len = int(truncate)
+            text_len = truncate
 
         logging.info(f'Transforming texts into vectors with {text_len} size')
 
         return pd.Series(pad_sequences(seq, padding='post', maxlen=text_len).tolist())
+
+    def to_text(self, data):
+        """Transform a vector back to text
+
+        Arguments:
+            data {list} -- ndarray or pd.Series
+        """
+
+        return self._tk.sequences_to_texts(data)
 
 
 def loadData(filename, cols: List[str], tokenizer_name=None, vocab_size=10000):
@@ -71,6 +80,7 @@ def loadData(filename, cols: List[str], tokenizer_name=None, vocab_size=10000):
         raise Exception('Only support .csv files')
 
     logging.info(f'loading data from {filename}')
+    data = pd.read_csv(data_dir / f'{filename}.csv', keep_default_na=False)
 
     tokenizer_name = tokenizer_name if tokenizer_name else filename
     cached_filename = cache_dir / f'{filename}.pkl'
@@ -78,15 +88,15 @@ def loadData(filename, cols: List[str], tokenizer_name=None, vocab_size=10000):
     # read from the cache if data exists
     if os.path.exists(cached_filename):
         logging.info('Read data from cache')
-        return pd.read_pickle(cached_filename)
-
-    data = pd.read_csv(data_dir / f'{filename}.csv', keep_default_na=False)
+        return pd.read_pickle(cached_filename), data
 
     # write to cache
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
 
     logging.info('Preprocessing data')
+    original_data = data
+    data = data.copy()
     for col in cols:
         preproc = Preprocessor(cache_path=cache_dir /
                                f'{tokenizer_name}_{col}.json', num_words=vocab_size)
@@ -98,7 +108,7 @@ def loadData(filename, cols: List[str], tokenizer_name=None, vocab_size=10000):
 
     data.to_pickle(cached_filename)
 
-    return data
+    return data, original_data
 
 
 def get_train_test_set(data: pd.DataFrame, col='text', test_size=0.2, min_seq=10):
