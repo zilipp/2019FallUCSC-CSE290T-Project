@@ -23,8 +23,10 @@ matplotlib==3.1.2
 mccabe==0.6.1
 numpy==1.17.4
 oauthlib==3.1.0
+opencv-python==4.1.2.30
 opt-einsum==3.1.0
 pandas==0.25.3
+pkg-resources==0.0.0
 protobuf==3.10.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.7
@@ -48,3 +50,4 @@ typed-ast==1.4.0
 urllib3==1.25.7
 Werkzeug==0.16.0
 wrapt==1.11.2
+yattag==1.12.2
