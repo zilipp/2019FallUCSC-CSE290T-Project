@@ -6,7 +6,7 @@ from tensorflow import keras
 from tensorflow.keras.preprocessing.text import Tokenizer, tokenizer_from_json
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
-from utils import data_dir
+from utils import data_dir, cache_dir
 from typing import List
 
 import logging
@@ -72,7 +72,6 @@ def loadData(filename, cols: List[str], tokenizer_name=None, vocab_size=10000):
 
     logging.info(f'loading data from {filename}')
 
-    cache_dir = data_dir / 'cache'
     tokenizer_name = tokenizer_name if tokenizer_name else filename
     cached_filename = cache_dir / f'{filename}.pkl'
 

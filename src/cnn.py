@@ -9,16 +9,27 @@ from preprocess import loadData, get_train_test_set
 import logging
 import matplotlib.pyplot as plt
 from tabulate import tabulate
-from utils import init_logger
+from utils import init_logger, cache_dir
 
 _vocab_size = 10000
 
 
 class CNN:
-    _model = None
-    _feature_size = 0
+    _conv_layer = 'conv'
+    _cache_path = cache_dir / 'cnn.h5'
 
-    def __init__(self, feature_size, vocab_size):
+    @classmethod
+    def from_cache(cls):
+        return CNN(model=keras.models.load_model(cls._cache_path))
+
+    def __init__(self, feature_size=0, vocab_size=0, model=None):
+        if (model):
+            self._model = model
+            return
+
+        if feature_size == 0 or vocab_size == 0:
+            raise Exception('feature_size or vocab_size cant be 0')
+
         self._feature_size = feature_size
 
         inputs = keras.Input(shape=(feature_size, ))
@@ -33,7 +44,10 @@ class CNN:
         outputs = layers.Dense(1, activation='sigmoid', name="predictions")(x)
 
         self._model = keras.Model(
-            inputs=inputs, outputs=outputs, name='fakenews_model')
+            inputs=inputs,
+            outputs=outputs,
+            name='fakenews_model'
+        )
 
         self._model.summary(print_fn=logging.info)
 
@@ -46,6 +60,9 @@ class CNN:
 
     def fit(self, X, T, epochs=5):
         self._model.fit(X, T, epochs=epochs)
+
+        # save the model
+        self._model.save(str(self._cache_path))
 
     def predict(self, X):
         return self._model.predict(X)
@@ -69,6 +86,10 @@ if __name__ == "__main__":
     # check from the cache
 
     # test with title first
-    cnn = CNN(X_train.shape[1], vocab_size=_vocab_size)
-    cnn.fit(X_train, T_train)
+    if os.path.exists(cache_dir / CNN._cache_path):
+        cnn = CNN.from_cache()
+    else:
+        cnn = CNN(X_train.shape[1], vocab_size=_vocab_size)
+        cnn.fit(X_train, T_train)
+
     cnn.evaluate(X_test, T_test)
