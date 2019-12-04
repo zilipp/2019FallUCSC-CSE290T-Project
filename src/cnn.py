@@ -39,8 +39,11 @@ class CNN:
         inputs = keras.Input(shape=(feature_size, ))
         # The embedding layer is to use higher dimension real vectors to represent
         # words.
-        x = layers.Embedding(vocab_size, 10)(inputs)
+        x = layers.Embedding(vocab_size, 20)(inputs)
         # This is a CNN that has 50 filters with a 5x5 window
+        x = layers.Conv1D(
+            50, kernel_size=2, activation='relu')(x)
+        x = layers.MaxPool1D(2)(x)
         x = layers.Conv1D(
             50, kernel_size=5, activation='relu', name=self._conv_layer)(x)
         x = layers.MaxPool1D(5)(x)
@@ -121,7 +124,7 @@ def print_document(X, Y, T, cams):
     X_text = prepro.to_text(X_sample)
 
     with tag('html'):
-        with tag('body'):
+        with tag('body', style="width: 900px;"):
             for i, p in enumerate(X_text):
                 cam = cams[i]
                 # normalize cam
