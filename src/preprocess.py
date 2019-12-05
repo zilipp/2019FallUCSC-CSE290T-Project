@@ -1,3 +1,4 @@
+import logging
 import os
 import tensorflow as ts
 import pandas as pd
@@ -8,15 +9,15 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
 from utils import data_dir, cache_dir
 from typing import List, Union
+from nltk.corpus import stopwords
+import nltk
 
-import logging
+nltk.download('stopwords')
 
 
 class Preprocessor:
-    _tk = None
-    _cache_path = None
 
-    def __init__(self, cache_path=None, **extra):
+    def __init__(self, cache_path=None, stop_words=None, **extra):
         if cache_path and os.path.exists(cache_path):
             with open(cache_path, 'r') as f:
                 self._tk = tokenizer_from_json(f.read())
@@ -97,9 +98,19 @@ def loadData(filename, cols: List[str], tokenizer_name=None, vocab_size=10000):
     logging.info('Preprocessing data')
     original_data = data
     data = data.copy()
+
+    stopword_list = set(stopwords.words('english'))
+
+    def remove_stop_words(text: str):
+        return ' '.join(filter(lambda w: w not in stopword_list, text.split(' ')))
+
     for col in cols:
         preproc = Preprocessor(cache_path=cache_dir /
                                f'{tokenizer_name}_{col}.json', num_words=vocab_size)
+
+        # remove stop words
+        data[col] = data[col].apply(remove_stop_words)
+
         preproc.fit(data[col])
         data[col] = preproc.transform(data[col])
         preproc.save()
