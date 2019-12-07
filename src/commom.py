@@ -32,11 +32,11 @@ train_df = train_df.drop(train_df['text'][train_df['length'] < 10].index, axis =
 # common parameters
 max_len = 510  # max_len of a sentence(median length of all text)
 embed_size = 100  # each word embedded to 300 dimension
-max_features = 50000  # count of vocabulary words
+max_features = 10000  # count of vocabulary words
 
 
 # 4.tokenize and padding
-tokenizer = Tokenizer(num_words=max_len, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower = True, split = ' ')
+tokenizer = Tokenizer(num_words=max_features, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower = True, split = ' ')
 tokenizer.fit_on_texts(texts=train_df['text'])
 X = tokenizer.texts_to_sequences(texts=train_df['text'])
 X = pad_sequences(sequences=X, maxlen=max_len, padding='pre')
