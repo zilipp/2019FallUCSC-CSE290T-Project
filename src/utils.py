@@ -9,8 +9,15 @@ from sklearn.model_selection import StratifiedShuffleSplit
 
 _min_seq_len = 50  # Minimum length of sequence
 
+# get the root directory relative to current file instead of cwd
+_root_dir = Path(os.path.dirname(os.path.abspath(__file__))) / '..'
 
-def init_logger(log_file):
+_user_logs_file = _root_dir / 'out/logs/user_logs/logs.txt' # User logging directory.
+data_dir = _root_dir / 'data'
+cache_dir = data_dir / 'cache'
+out_dir = _root_dir / 'out'
+
+def init_logger(log_file=_user_logs_file):
     if not os.path.exists(log_file):
         os.makedirs(os.path.dirname(log_file))
 

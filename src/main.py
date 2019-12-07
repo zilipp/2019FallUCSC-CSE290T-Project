@@ -199,7 +199,6 @@ def main():
     train_x, val_x, test_x = preprocess(train_x, val_x, test_x)
     train(train_x, train_y, val_x, val_y)
     eval(val_x, val_y)
-
     logging.info('Done!')
 
 

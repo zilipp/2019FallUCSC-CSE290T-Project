@@ -112,6 +112,7 @@ checkpoints/
 logs/
 *.h5
 data/kfold
+data/cache
 
 # output
 /out
